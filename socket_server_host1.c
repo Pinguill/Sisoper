@@ -121,6 +121,7 @@ int main(int argc , char *argv[]) {
 					else { /* parent process */
 						/* parent will wait for the child to complete */
 						wait(NULL);
+						sleep(10);
 						strcpy(client_message, token);
 						strcat(client_message, " 8080");
 						send(client_sock , client_message , strlen(client_message), 0);
@@ -139,6 +140,7 @@ int main(int argc , char *argv[]) {
 					else { /* parent process */
 						/* parent will wait for the child to complete */
 						wait(NULL);
+						sleep(20);
 						strcpy(client_message, token);
 						strcat(client_message, " stoped");
 						send(client_sock , client_message , strlen(client_message), 0);
@@ -157,6 +159,7 @@ int main(int argc , char *argv[]) {
 					else { /* parent process */
 						/* parent will wait for the child to complete */
 						wait(NULL);
+						sleep(20);
 						strcpy(client_message, token);
 						strcat(client_message, " removed");
 						send(client_sock , client_message , strlen(client_message), 0);

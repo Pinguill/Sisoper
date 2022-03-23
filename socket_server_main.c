@@ -57,9 +57,27 @@ int agentConnect(int portSelected, char * nameContainer){
 	puts("Server reply :");
 	puts(server_reply);
 	if(nameContainer[0] == '1'){
-		printf("Aumento de contenedores\n");
+		printf("Containers has increased\n");
 		strcpy(map[contContainer], server_reply);
 		contContainer += 1;
+	}else if(nameContainer[0] == '3'){
+		char nameCopy[100];
+		char mapCopy[100];
+		char vacio[100];
+
+		for(int i = 0; i < contContainer; i++){
+			strcpy(mapCopy, map[i]);
+			strcpy(nameCopy, nameContainer);
+			char * token = strtok(nameCopy, " ");
+			token = strtok(NULL, " ");
+			char * token2 = strtok(mapCopy, " ");
+			
+			if(strcmp(token, token2) == 0){
+				strcpy(map[i], vacio);
+				contContainer -= 1;
+				printf("Containers has decreased\n");
+			}
+		}
 	}
 
 }
@@ -80,11 +98,13 @@ void randomPicker(char * name){
 
 void searchHost(char * name){
 	char containerName[100];
+	char mapCopy[100];
 	strcpy(containerName, name);
 	char * token = strtok(name, " ");
 	token = strtok(NULL, " ");
 	for(int i = 0; i < contContainer; i++){
-		char * token2 = strtok(map[i], " ");
+		strcpy(mapCopy, map[i]);
+		char * token2 = strtok(mapCopy, " ");
 		if(strcmp(token, token2) == 0){
 			token2 = strtok(NULL, " ");
 			int destinationPort = atoi(token2);
