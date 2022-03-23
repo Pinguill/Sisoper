@@ -71,10 +71,9 @@ int agentConnect(int portSelected, char * nameContainer){
 			char * token = strtok(nameCopy, " ");
 			token = strtok(NULL, " ");
 			char * token2 = strtok(mapCopy, " ");
-			
+
 			if(strcmp(token, token2) == 0){
 				strcpy(map[i], vacio);
-				contContainer -= 1;
 				printf("Containers has decreased\n");
 			}
 		}
