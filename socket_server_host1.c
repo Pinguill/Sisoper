@@ -29,7 +29,7 @@ void messageToSub(){
 	puts("Connected\n");
 	
 	//keep communicating with server
-	strcpy(message, "8080 host1");
+	strcpy(message, "8080");
 	if( send(sock , message , strlen(message) , 0) < 0) {
 		puts("Send failed");
 	} else {

@@ -107,7 +107,7 @@ void searchHost(char * name){
 		if(strcmp(token, token2) == 0){
 			token2 = strtok(NULL, " ");
 			int destinationPort = atoi(token2);
-			printf("port destination %d, nombre %s\n", destinationPort, containerName);
+			printf("port destination %d, name %s\n", destinationPort, containerName);
 			agentConnect(destinationPort, containerName);
 		}
 	}
@@ -188,7 +188,7 @@ void childProcess(){
 			ptr += strlen(message);
 		}
 
-		if(cont == 1){
+		if(cont == 2){
 			flag = 1;
 			printf("%d\n", flag);
 		}
@@ -196,6 +196,7 @@ void childProcess(){
 }
 
 int main(int argc , char *argv[]) {
+	
 	pid_t pid;
     pid = fork ();
     if (pid < 0) { /* error occurred */
