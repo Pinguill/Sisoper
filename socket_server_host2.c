@@ -5,6 +5,15 @@
 #include<unistd.h>	//write
 #include <sys/wait.h>
 
+/* Pthreads */
+#include <pthread.h>
+#include <assert.h>
+#include <stdlib.h>
+
+typedef struct __myarg_t {
+	int client_sock;
+} myarg_t;
+
 void messageToSub(){
 	int sock;
 	struct sockaddr_in server;
@@ -38,13 +47,15 @@ void messageToSub(){
 	close(sock);	
 }
 
-void acceptingPetition(int * client_sock){
+void acceptingPetition(myarg_t * client_sock){
 	char client_message[2000];
 	pid_t pid2;
-
+	
+	myarg_t * m = client_sock; 
 	memset (client_message, 0, 2000);
 	//Receive a message from client
-	if (recv(*client_sock , client_message , 2000 , 0) > 0) {
+
+	if (recv(m->client_sock , client_message , 2000 , 0) > 0) {
 		printf("received message in agent: %s\n", client_message);
 
 		char * token = strtok(client_message, " ");
@@ -63,10 +74,9 @@ void acceptingPetition(int * client_sock){
 			else { /* parent process */
 				/* parent will wait for the child to complete */
 				wait(NULL);
-				sleep(10);
 				strcpy(client_message, token);
 				strcat(client_message, " 9090");
-				send(*client_sock , client_message , strlen(client_message), 0);
+				send(m->client_sock , client_message , strlen(client_message), 0);
 			}
 		}else if(client_message[0] == '2'){
 			//Container stop
@@ -81,10 +91,9 @@ void acceptingPetition(int * client_sock){
 			else { /* parent process */
 				/* parent will wait for the child to complete */
 				wait(NULL);
-				sleep(20);
 				strcpy(client_message, token);
 				strcat(client_message, " stoped");
-				send(*client_sock , client_message , strlen(client_message), 0);
+				send(m->client_sock , client_message , strlen(client_message), 0);
 			}
 		}else if(client_message[0] == '3'){
 			//Container remove
@@ -99,10 +108,9 @@ void acceptingPetition(int * client_sock){
 			else { /* parent process */
 				/* parent will wait for the child to complete */
 				wait(NULL);
-				sleep(20);
 				strcpy(client_message, token);
 				strcat(client_message, " removed");
-				send(*client_sock , client_message , strlen(client_message), 0);
+				send(m->client_sock , client_message , strlen(client_message), 0);
 			}
 		}
 	}
@@ -171,9 +179,10 @@ int main(int argc , char *argv[]) {
 			puts("Connection accepted");
 
 			// ENVIO POR HILO
-			pthread_create(&p, NULL, (void *)acceptingPetition, &client_sock);
+			myarg_t * m = malloc(sizeof(myarg_t));
+			m->client_sock = client_sock;
+			pthread_create(&p, NULL, (void *)acceptingPetition, m);
 		}
-
     }
 
 	return 0;

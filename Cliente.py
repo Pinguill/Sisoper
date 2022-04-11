@@ -112,8 +112,10 @@ def removeContainer(name):
         print('closing socket')
         sock.close()
 
-createContainer("tumama")
+#createContainer("hola1")
+#createContainer("hola2")
+#createContainer("hola3")
 
-stopContainer("tumama")
-
-removeContainer("tumama")
+stopContainer("hola1")
+stopContainer("hola2")
+stopContainer("hola3")

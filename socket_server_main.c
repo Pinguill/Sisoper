@@ -20,10 +20,13 @@
 char map[100][100];
 int contContainer = 0;
 
+pthread_mutex_t mutex1 = PTHREAD_MUTEX_INITIALIZER;
+
 int agentConnect(int portSelected, char * nameContainer){
 	int sock;
 	struct sockaddr_in server;
 	char server_reply[2000];
+	
 	
 	//Create socket
 	sock = socket(AF_INET , SOCK_STREAM , 0);
@@ -40,7 +43,7 @@ int agentConnect(int portSelected, char * nameContainer){
 	if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0) {
 		perror("connect agent failed. Error ");
 		return 1;
-	}
+	} 
 	
 	puts("Connected to agent\n");
 
@@ -50,20 +53,22 @@ int agentConnect(int portSelected, char * nameContainer){
 	} else {
         puts("send ok agent conect");
     }
-	
-	memset ( server_reply, 0, 2000 );
+
 	if( recv(sock , server_reply , 2000 , 0) < 0) {
 		puts("recv failed");
 	} else {
         puts("recv ok");
     }
-	
+
 	puts("Server reply :");
 	puts(server_reply);
+	
 	if(nameContainer[0] == '1'){
 		printf("Containers has increased\n");
+		pthread_mutex_lock( &mutex1 );
 		strcpy(map[contContainer], server_reply);
 		contContainer += 1;
+		pthread_mutex_unlock( &mutex1 );
 	}else if(nameContainer[0] == '3'){
 		char nameCopy[100];
 		char mapCopy[100];
@@ -82,6 +87,7 @@ int agentConnect(int portSelected, char * nameContainer){
 			}
 		}
 	}
+	
 
 }
 
@@ -150,12 +156,10 @@ void acceptingConectionSub(int * client_sock){
 
 void acceptingConectionAdmin(int * client_sock){
 	char client_message[2000];
-
 	memset(client_message, 0, 2000);
 	//Receive a message from client
-	printf("antes de recv %d\n", *client_sock);
 	if(recv(* client_sock , client_message , 2000 , 0) > 0) {
-		pthread_t p;
+		pthread_t p1;
 		printf("received message: %s\n", client_message);
 		//Send the message back to client
 		send(*client_sock , client_message , strlen(client_message), 0);
@@ -164,13 +168,12 @@ void acceptingConectionAdmin(int * client_sock){
 		/* OPC 2 = STOP */
 		/* OPC 3 = REMOVE */
 		/* OPC 4 = LIST */
-
 		if((client_message[0] == '1')){
-			pthread_create(&p, NULL, (void *)randomPicker, &client_message);
+			pthread_create(&p1, NULL, (void *)randomPicker, &client_message);
 		}else if(client_message[0] == '2'){
-			pthread_create(&p, NULL, (void *)searchHost, &client_message);
-		}else if(client_message[0] == '3'){
-			pthread_create(&p, NULL, (void *)searchHost, &client_message);
+			pthread_create(&p1, NULL, (void *)searchHost, &client_message);
+		}else if(client_message[0] == '3'){ 
+			pthread_create(&p1, NULL, (void *)searchHost, &client_message);
 		}else if(client_message[0] == '4'){
 			// List
 		}
@@ -329,7 +332,6 @@ int main(int argc , char *argv[]) {
 				perror("accept failed");
 			}
 			puts("Connection accepted");
-			printf("Antes del hilo %d\n", client_sock);
 			pthread_create(&p, NULL, (void *)acceptingConectionAdmin, &client_sock);
 		}
     }
