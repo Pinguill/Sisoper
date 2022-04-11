@@ -7,11 +7,15 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
-// Shared memory
+/*| Shared memory */
 #include <fcntl.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+
+/* Pthreads */
+#include <pthread.h>
+#include <assert.h>
 
 char map[100][100];
 int contContainer = 0;
@@ -87,7 +91,6 @@ void randomPicker(char * name){
 	int Rnumber;
 	srand(time(NULL));
 	Rnumber = rand() % 2; 
-	Rnumber = 0;
 	if(Rnumber == 0){
 		agentConnect(8080 , name);
 	}else if(Rnumber == 1){
@@ -109,6 +112,67 @@ void searchHost(char * name){
 			int destinationPort = atoi(token2);
 			printf("port destination %d, name %s\n", destinationPort, containerName);
 			agentConnect(destinationPort, containerName);
+		}
+	}
+}
+
+void acceptingConectionSub(int * client_sock){
+	int c, read_size, cont = 0;
+	struct sockaddr_in server, client;
+	char client_message[2000];
+
+	memset(client_message, 0, 2000);
+	
+	if(recv(*client_sock , client_message , 2000 , 0) > 0) {
+		const int SIZE = 4096;
+		/* name of the shared memory object */
+		const char *name = "OS";
+		/* strings written to shared memory */
+		const char *message = client_message;
+		/* shared memory file descriptor */
+		int fd;
+		/* pointer to shared memory obect */
+		char *ptr;
+
+		fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+    	if (fd == -1) {
+			perror("open");
+		}
+
+		ftruncate (fd, SIZE);
+
+		ptr = (char *) mmap (0, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+		sprintf(ptr, "%s", message);
+		ptr += strlen(message);
+	}
+}
+
+void acceptingConectionAdmin(int * client_sock){
+	char client_message[2000];
+
+	memset(client_message, 0, 2000);
+	//Receive a message from client
+	printf("antes de recv %d\n", *client_sock);
+	if(recv(* client_sock , client_message , 2000 , 0) > 0) {
+		pthread_t p;
+		printf("received message: %s\n", client_message);
+		//Send the message back to client
+		send(*client_sock , client_message , strlen(client_message), 0);
+		printf("mensaje: %s\n", client_message);
+		/* OPC 1 = CREAR */
+		/* OPC 2 = STOP */
+		/* OPC 3 = REMOVE */
+		/* OPC 4 = LIST */
+
+		if((client_message[0] == '1')){
+			pthread_create(&p, NULL, (void *)randomPicker, &client_message);
+		}else if(client_message[0] == '2'){
+			pthread_create(&p, NULL, (void *)searchHost, &client_message);
+		}else if(client_message[0] == '3'){
+			pthread_create(&p, NULL, (void *)searchHost, &client_message);
+		}else if(client_message[0] == '4'){
+			// List
 		}
 	}
 }
@@ -148,7 +212,9 @@ void childProcess(){
 	// request arrives when the queue is full, the client may receive an error with an 
 	// indication of ECONNREFUSED.
 	int flag = 0;
+	pthread_t p;
 	while(flag == 0){
+		//accept connection from an incoming client
 		listen(socket_desc , 3);
 		//Accept and incoming connection
 		puts("Waiting for incoming connections to 6060 Subcribe host...");
@@ -161,33 +227,7 @@ void childProcess(){
 		cont += 1;
 		puts("Connection accepted");
 
-		memset(client_message, 0, 2000);
-		
-		if(recv(client_sock , client_message , 2000 , 0) > 0) {
-
-			const int SIZE = 4096;
-			/* name of the shared memory object */
-			const char *name = "OS";
-			/* strings written to shared memory */
-			const char *message = client_message;
-			/* shared memory file descriptor */
-			int fd;
-			/* pointer to shared memory obect */
-			char *ptr;
-
-			fd = shm_open(name, O_CREAT | O_RDWR, 0666);
-    		if (fd == -1) {
-				perror("open");
-			}
-
-			ftruncate (fd, SIZE);
-
-			ptr = (char *) mmap (0, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-
-			sprintf(ptr, "%s", message);
-			ptr += strlen(message);
-		}
-
+		pthread_create(&p, NULL, (void *)acceptingConectionSub, &socket_desc);
 		if(cont == 2){
 			flag = 1;
 			printf("%d\n", flag);
@@ -208,6 +248,7 @@ int main(int argc , char *argv[]) {
     }
     else { /* parent process ------------ Admin Container*/
         /* parent will wait for the child to complete*/
+
         wait(NULL);
 
 		/* SHARED MEMORY */
@@ -275,38 +316,21 @@ int main(int argc , char *argv[]) {
 		// request arrives when the queue is full, the client may receive an error with an 
 		// indication of ECONNREFUSED.
 		int flag = 0;
+		pthread_t p;
 		while(flag == 0){
 			listen(socket_desc , 3);
 			//Accept and incoming connection
 			puts("Waiting for incoming connections to 7070 ...");
 			c = sizeof(struct sockaddr_in);
-			
+
 			//accept connection from an incoming client
 			client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c);
 			if(client_sock < 0) {
 				perror("accept failed");
-				return 1;
 			}
 			puts("Connection accepted");
-			
-			memset(client_message, 0, 2000);
-			//Receive a message from client
-			if(recv(client_sock , client_message , 2000 , 0) > 0) {
-				printf("received message: %s\n", client_message);
-				//Send the message back to client
-				send(client_sock , client_message , strlen(client_message), 0);
-
-				/* OPC 1 = CREAR */
-				/* OPC 2 = STOP */
-				/* OPC 3 = REMOVE */
-				if((client_message[0] == '1')){
-					randomPicker(client_message);
-				}else if(client_message[0] == '2'){
-					searchHost(client_message);
-				}else if(client_message[0] == '3'){
-					searchHost(client_message);
-				}
-			}
+			printf("Antes del hilo %d\n", client_sock);
+			pthread_create(&p, NULL, (void *)acceptingConectionAdmin, &client_sock);
 		}
     }
 

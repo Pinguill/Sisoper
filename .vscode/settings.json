@@ -3,6 +3,8 @@
         "string.h": "c",
         "socket.h": "c",
         "stat.h": "c",
-        "mman.h": "c"
+        "mman.h": "c",
+        "pthread.h": "c",
+        "assert.h": "c"
     }
 }

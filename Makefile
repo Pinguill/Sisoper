@@ -58,13 +58,13 @@ socket_server: socket_server.o
 	gcc -o socket_server socket_server.o
 
 socket_server_main: socket_server_main.o
-	gcc -o socket_server_main socket_server_main.o -lrt
+	gcc -pthread -o socket_server_main socket_server_main.o -lrt
 
 socket_server_host1: socket_server_host1.o
-	gcc -o socket_server_host1 socket_server_host1.o
+	gcc -pthread -o socket_server_host1 socket_server_host1.o -lrt
 
 socket_server_host2: socket_server_host2.o
-	gcc -o socket_server_host2 socket_server_host2.o
+	gcc -pthread -o socket_server_host2 socket_server_host2.o -lrt
 
 tar:
 	tar cf ../examples.tar .

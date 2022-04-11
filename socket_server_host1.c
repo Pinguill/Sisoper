@@ -5,6 +5,11 @@
 #include<unistd.h>	//write
 #include <sys/wait.h>
 
+/* Pthreads */
+#include <pthread.h>
+#include <assert.h>
+#include <stdlib.h>
+
 void messageToSub(){
 	int sock;
 	struct sockaddr_in server;
@@ -36,6 +41,76 @@ void messageToSub(){
         puts("Send ok");
     }
 	close(sock);	
+}
+
+void acceptingPetition(int * client_sock){
+	char client_message[2000];
+	pid_t pid2;
+
+	memset (client_message, 0, 2000);
+	//Receive a message from client
+	if (recv(*client_sock , client_message , 2000 , 0) > 0) {
+		printf("received message in agent: %s\n", client_message);
+
+		char * token = strtok(client_message, " ");
+		token = strtok(NULL, " ");
+		printf("%s token\n", token);
+
+		//Container creation
+		if(client_message[0] == '1'){
+			pid2 = fork ();
+			if (pid2 < 0) { /* error occurred */
+				fprintf(stderr, "Fork Failed\n");
+			}
+			else if (pid2 == 0) { /* child process */
+				execlp("docker", "docker", "run", "-di", "--name", token, "ubuntu:latest", "/bin/bash", NULL);
+			}
+			else { /* parent process */
+				/* parent will wait for the child to complete */
+				wait(NULL);
+				sleep(10);
+				strcpy(client_message, token);
+				strcat(client_message, " 8080");
+				send(*client_sock , client_message , strlen(client_message), 0);
+			}
+		}else if(client_message[0] == '2'){
+			//Container stop
+
+			pid2 = fork ();
+			if (pid2 < 0) { /* error occurred */
+				fprintf(stderr, "Fork Failed\n");
+			}
+			else if (pid2 == 0) { /* child process */
+				execlp("docker", "docker", "stop", token, NULL);
+			}
+			else { /* parent process */
+				/* parent will wait for the child to complete */
+				wait(NULL);
+				sleep(20);
+				strcpy(client_message, token);
+				strcat(client_message, " stoped");
+				send(*client_sock , client_message , strlen(client_message), 0);
+			}
+		}else if(client_message[0] == '3'){
+			//Container remove
+
+			pid2 = fork ();
+			if (pid2 < 0) { /* error occurred */
+				fprintf(stderr, "Fork Failed\n");
+			}
+			else if (pid2 == 0) { /* child process */
+				execlp("docker", "docker", "rm", token, NULL);
+			}
+			else { /* parent process */
+				/* parent will wait for the child to complete */
+				wait(NULL);
+				sleep(20);
+				strcpy(client_message, token);
+				strcat(client_message, " removed");
+				send(*client_sock , client_message , strlen(client_message), 0);
+			}
+		}
+	}
 }
 
 int main(int argc , char *argv[]) {
@@ -84,6 +159,7 @@ int main(int argc , char *argv[]) {
 		// request arrives when the queue is full, the client may receive an error with an 
 		// indication of ECONNREFUSED.
 		int flag = 0;
+		pthread_t p;
 		while(flag == 0){
 			listen(socket_desc , 3);
 
@@ -99,75 +175,9 @@ int main(int argc , char *argv[]) {
 			}
 			puts("Connection accepted");
 
-			memset (client_message, 0, 2000);
-			//Receive a message from client
-			if (recv(client_sock , client_message , 2000 , 0) > 0) {
-				printf("received message in agent: %s\n", client_message);
-
-				char * token = strtok(client_message, " ");
-				token = strtok(NULL, " ");
-				printf("%s token\n", token);
-
-				//Container creation
-				if(client_message[0] == '1'){
-					pid2 = fork ();
-					if (pid2 < 0) { /* error occurred */
-						fprintf(stderr, "Fork Failed\n");
-						return 1;
-					}
-					else if (pid2 == 0) { /* child process */
-						execlp("docker", "docker", "run", "-di", "--name", token, "ubuntu:latest", "/bin/bash", NULL);
-					}
-					else { /* parent process */
-						/* parent will wait for the child to complete */
-						wait(NULL);
-						sleep(10);
-						strcpy(client_message, token);
-						strcat(client_message, " 8080");
-						send(client_sock , client_message , strlen(client_message), 0);
-					}
-				}else if(client_message[0] == '2'){
-					//Container stop
-
-					pid2 = fork ();
-					if (pid2 < 0) { /* error occurred */
-						fprintf(stderr, "Fork Failed\n");
-						return 1;
-					}
-					else if (pid2 == 0) { /* child process */
-						execlp("docker", "docker", "stop", token, NULL);
-					}
-					else { /* parent process */
-						/* parent will wait for the child to complete */
-						wait(NULL);
-						sleep(20);
-						strcpy(client_message, token);
-						strcat(client_message, " stoped");
-						send(client_sock , client_message , strlen(client_message), 0);
-					}
-				}else if(client_message[0] == '3'){
-					//Container remove
-
-					pid2 = fork ();
-					if (pid2 < 0) { /* error occurred */
-						fprintf(stderr, "Fork Failed\n");
-						return 1;
-					}
-					else if (pid2 == 0) { /* child process */
-						execlp("docker", "docker", "rm", token, NULL);
-					}
-					else { /* parent process */
-						/* parent will wait for the child to complete */
-						wait(NULL);
-						sleep(20);
-						strcpy(client_message, token);
-						strcat(client_message, " removed");
-						send(client_sock , client_message , strlen(client_message), 0);
-					}
-				}
-			}
+			// ENVIO POR HILO
+			pthread_create(&p, NULL, (void *)acceptingPetition, &client_sock);
 		}
-
     }
 
 	return 0;
